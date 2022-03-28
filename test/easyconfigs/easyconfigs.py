@@ -465,6 +465,8 @@ class EasyConfigTest(TestCase):
 
         # some software packages require a specific (older/newer) version of a particular dependency
         old_dep_versions = {
+            # snippy 4.6.0 needs BCFtools 1.12
+            'BCFtools': [('1.12;', ['snippy-4.6.0'])],
             # EMAN2 2.3 requires Boost(.Python) 1.64.0
             'Boost': [('1.64.0;', [r'Boost.Python-1\.64\.0-', r'EMAN2-2\.3-'])],
             'Boost.Python': [('1.64.0;', [r'EMAN2-2\.3-'])],
