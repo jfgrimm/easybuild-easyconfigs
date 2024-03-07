@@ -1,0 +1,45 @@
+easyblock = 'CMakeMake'
+
+name = 'OpenMC'
+version = '0.14.0'
+
+homepage = 'https://github.com/openmc-dev/openmc'
+description = """OpenMC is an open-source Monte Carlo particle transport simulation code."""
+
+toolchain = {'name': 'foss', 'version': '2023a'}
+
+source_urls = ['https://github.com/openmc-dev/openmc/archive']
+sources = ['v%(version)s.tar.gz']
+checksums = ['20ac92cc8d37a8c1180ae2df9f1dd1158f188cbf724ae64c9642db6199f3ee3f']
+
+builddependencies = [
+    ('CMake', '3.26.3'),
+    ('Catch2', '3.5.3'),
+    ('fmt', '10.0.0'),
+    ('gsl-lite', '0.41.0'),
+    ('pkgconf', '1.9.5'),
+]
+
+dependencies = [
+    ('HDF5', '1.14.0'),
+    ('libpng', '1.6.39'),
+    ('pugixml', '1.14'),
+    ('xtensor', '0.25.0'),
+]
+
+# downgrade error to warning when git submodules aren't found (we provide the dependencies through modules)
+preconfigopts = """sed -i 's/FATAL_ERROR "The git sub/WARNING "The git sub/g' %(start_dir)s/CMakeLists.txt && """
+
+configopts = ' '.join([
+    "-DHDF5_PREFER_PARALLEL=on",
+    "-DOPENMC_USE_MPI=on",
+])
+
+sanity_check_paths = {
+    'files': ['bin/%(namelower)s', 'lib/lib%%(namelower)s.%s' % SHLIB_EXT],
+    'dirs': ['include/%(namelower)s', 'share']
+}
+
+sanity_check_commands = ["%(namelower)s --help"]
+
+moduleclass = 'tools'

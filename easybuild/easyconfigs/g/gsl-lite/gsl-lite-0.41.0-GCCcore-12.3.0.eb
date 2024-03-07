@@ -1,0 +1,31 @@
+# Author: Jasper Grimm
+easyblock = 'CMakeMake'
+
+name = 'gsl-lite'
+version = '0.41.0'
+
+homepage = 'https://github.com/gsl-lite/gsl-lite'
+description = """
+gsl-lite – A single-file header-only version of ISO C++ Guidelines Support Library (GSL) for C++98,
+C++11, and later
+"""
+
+toolchain = {'name': 'GCCcore', 'version': '12.3.0'}
+
+source_urls = [GITHUB_SOURCE]
+sources = ['v%(version)s.tar.gz']
+checksums = ['4682d8a60260321b92555760be3b9caab60e2a71f95eddbdfb91e557ee93302a']
+
+builddependencies = [
+    ('binutils', '2.40'),
+    ('CMake', '3.26.3'),
+]
+
+configopts = 'GSL_LITE_OPT_BUILD_TESTS=ON'
+
+sanity_check_paths = {
+    'files': ['include/%(name)s/%(name)s.hpp'],
+    'dirs': ['lib/cmake/%(name)s'],
+}
+
+moduleclass = 'lib'
