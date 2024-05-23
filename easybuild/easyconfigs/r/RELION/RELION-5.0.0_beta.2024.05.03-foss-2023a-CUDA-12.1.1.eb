@@ -1,10 +1,12 @@
 # Author: Jasper Grimm (UoY)
-easyblock = 'CMakeMake'
+easyblock = 'CMakePythonPackage'
 
 name = 'RELION'
 version = '5.0.0_beta.2024.05.03'
-_commit = '6331fe6'
+_sha = '6331fe600cca7683ecf7c1011ce676701faf1e97'
+_commit = '%s' % _sha[:7]
 versionsuffix = '-CUDA-%(cudaver)s'
+versionprefix = 'b'  # avoid beta to be default module. (could damage existing Relion4 projects)
 
 homepage = 'http://www2.mrc-lmb.cam.ac.uk/relion/index.php/Main_Page'
 description = """RELION (for REgularised LIkelihood OptimisatioN, pronounce rely-on) is a stand-alone computer
@@ -12,6 +14,7 @@ description = """RELION (for REgularised LIkelihood OptimisatioN, pronounce rely
  averages in electron cryo-microscopy (cryo-EM).
  """
 
+# TH77 TODO: adapt build_info_msg to changes; mention site specific settings and template.
 build_info_msg = """To install RELION, it's recommended to change the defaults in this easyconfig,
  to something suitable for your site. Recommended changes:
    * Set '_torch_home' to the location where the model weights are downloaded (~12GB). The weights
@@ -45,6 +48,56 @@ build_info_msg = """To install RELION, it's recommended to change the defaults i
 toolchain = {'name': 'foss', 'version': '2023a'}
 toolchainopts = {'opt': True}
 
+modextravars = {  # TODO: as module footer
+    'RELION_MOTIONCOR2_EXECUTABLE': "$(which MotionCor3)",
+    'RELION_GCTF_EXECUTABLE': '$(which Gctf)',
+    'RELION_CTFFIND_EXECUTABLE': '$(which ctffind)',
+    'RELION_UNBLUR_EXECUTABLE': '$(which unblur)',
+    'RELION_SUMMOVIE_EXECUTABLE': '$(which summovie)',
+    'RELION_RESMAP_EXECUTABLE': '$(which ResMap)',
+    'RELION_TOPAZ_EXECUTABLE': '$(which topaz)',
+    'RELION_PYTHON_EXECUTABLE': '$(which python)',
+    'RELION_IMOD_WRAPPER_EXECUTABLE': '$(yet-another-imod-wrapper)',
+    'RELION_PDFVIEWER_EXECUTABLE': '$(which xpdf)',
+    'RELION_ARETOMO_EXECUTABLE': '$(which AreTomo2)',
+    # RELION_EXTERNAL_RECONSTRUCT_EXECUTABLE: set externally, e.g. sidesplitter or externprior module
+    #
+    # Adapt site specific settings (appropriate submit template required):
+    'RELION_SCRATCH_DIR': '$SCRATCHDIR',  # site specific
+    'RELION_QSUB_NRMPI': '3',
+    'RELION_QSUB_NRTHREADS': '7',
+    'RELION_MINIMUM_DEDICATED': '15',
+    #
+    'RELION_QSUB_EXTRA_COUNT': '7',
+    'RELION_QUEUE_USE': 'true',
+    'RELION_QUEUE_NAME': 'gpu-el8',
+    'RELION_QSUB_COMMAND': 'sbatch',
+    'RELION_QSUB_EXTRA2_DEFAULT': '60GB',
+    'RELION_QSUB_EXTRA2': 'Memory',
+    'RELION_QSUB_EXTRA1': 'GPU count',
+    'RELION_QSUB_EXTRA1_DEFAULT': '2',
+    'RELION_QSUB_EXTRA3': 'Walltime',
+    'RELION_QSUB_EXTRA3_DEFAULT': '1-0:0:0',
+    'RELION_QSUB_EXTRA4': 'Extra modules',
+    'RELION_QSUB_EXTRA4_DEFAULT': '',
+    'RELION_QSUB_EXTRA5': 'Extra slurm parameter',
+    'RELION_QSUB_EXTRA5_DEFAULT': "#SBATCH --ntasks-per-core=1",
+    'RELION_QSUB_EXTRA6': 'Preprocess command',
+    'RELION_QSUB_EXTRA6_DEFAULT': "#PREPROC: replace, if required",
+    'RELION_QSUB_EXTRA7': 'Postprocess command',
+    'RELION_QSUB_EXTRA7_DEFAULT': "#POSTPROC: replace, if required",
+    'RELION_TEMPLATES': '%(installdir)s/templates/',
+    'RELION_QSUB_TEMPLATE': '${RELION_TEMPLATES}/gpu.slurm.script',
+    #
+    'RELION_DO_OWN_MOTIONCOR': '0',
+    # use GPU by default. Requires RELION-5.0.0_env_use_gpu.patch
+    'RELION_USE_GPU_ACCELERATION': '1',
+    #
+    # 'RELION_STACK_BUFFER: '0',  # see: https://github.com/3dem/relion/pull/783
+    # 'RELION_BLUSH_ARGS' '',  # TODO
+    # 'RELION_RESMAP_TEMPLATE': ''  # resmap still required?
+    # 'RELION_SCRIPT_DIRECTORY': ''  # required for relion-it on-the-fly processing.
+}
 sources = [{
     'download_filename': '%(version)s.tar.gz',
     'filename': SOURCELOWER_TAR_GZ,
@@ -55,7 +108,18 @@ sources = [{
         'keep_git_dir': True,
     },
 }]
-patches = ['%(name)s-5.0.0_target-all-cuda-compute-capabilities.patch']
+patches = [
+    '%(name)s-5.0.0_target-all-cuda-compute-capabilities.patch',
+    'RELION-5.0.0_env_use_gpu.patch',
+    'RELION-5.0.0_qsub_script_expand_env.patch',
+    # Add extra option to GUI Align tilt series -> Tab: AreTomo in order to allow setting
+    # AreTomo executable.
+    # Introduce shell variable RELION_ARETOMO_EXECUTABLE to set default of above.
+    # Required to use AreTomo2 instead of AreTomo
+    'RELION-5.0.0_gui_set_aretomo_exe.patch',
+    # inject site specific job template into %s/templates:
+    # ('RELION-5.0.0_add_templates.patch', 0) 
+]
 checksums = [
     # Note: no checksum for RELION tarball, due to use of `git_config`
     None,
@@ -65,20 +129,21 @@ checksums = [
 
 builddependencies = [
     ('CMake', '3.26.3'),
-    ('poetry', '1.7.1'),  # use poetry compatible with build 1.x
-    ('meson-python', '0.15.0'),  # pandas 2.1.4 needs meson >= 1.2.1
+    # ('poetry', '1.7.1'),  # use poetry compatible with build 1.x  # TH77: still required for 
+    #                                                                 only aretomo and imod wrappers?
+    # ('meson-python', '0.15.0'),  # pandas 2.1.4 needs meson >= 1.2.1  # TH77: starfile as dependency
 ]
 
 dependencies = [
     # required dependencies #
     ('CUDA', '12.1.1', '', SYSTEM),
     ('LibTIFF', '4.5.0'),
-    ('tbb', '2021.11.0'),
+    # ('tbb', '2021.11.0'),   #TH77: only required for accelerated CPU build with -DALTCPU=ON ?
     ('libpng', '1.6.39'),
-    ('morphosamplers', '0.0.10'),   # required for: src/tomography_python_programs/get_particle_poses/filaments.py
+    ('morphosamplers', '0.0.11'),   # required for: src/tomography_python_programs/get_particle_poses/filaments.py
 
     # optional dependencies #
-    ('tcsh', '6.24.10'),
+    ('tcsh', '6.24.10'),          # TH77: still required?
     ('gnuplot', '5.4.8'),
     ('FLTK', '1.3.8'),            # for GUI
     ('X11', '20230603'),          # for GUI
@@ -88,43 +153,40 @@ dependencies = [
     ('Ghostscript', '10.01.2'),   # for PDF files
     ('xpdf', '4.04'),             # pdf viewer
     # ('evince', '45.0'),         # pdf viewer
-    # ('ctffind', '4.1.14'),      # lens defocus estimation
-    # ('AreTomo2', '1.0.0', versionsuffix),     # alternative movie alignment
+    ('ctffind', '4.1.14'),      # lens defocus estimation
+    ('AreTomo2', '1.0.0', versionsuffix),     # alternative movie alignment
     # ('MotionCor2', '1.5.0'),                  # alternative movie alignment
-    # ('MotionCor3', '1.0.1', versionsuffix),   # alternative movie alignment
+    ('MotionCor3', '1.0.1', versionsuffix),   # alternative movie alignment
     # ('ResMap', '1.1.4'),        # alternative local resolution estimation
 
     # dependencies from conda environment.yaml file #
     ('Python', '3.11.3'),
-    ('PyTorch-bundle', '2.1.2', versionsuffix),
     ('SciPy-bundle', '2023.07'),
-    ('tqdm', '4.66.1'),
-    ('scikit-learn', '1.3.1'),
-    ('matplotlib', '3.7.2'),
-    ('PyQt5', '5.15.10'),
-    ('Biopython', '1.83'),
     ('Seaborn', '0.13.2'),
-    ('dill', '0.3.7'),
-    ('umap-learn', '0.5.5'),
     ('einops', '0.7.0'),
     ('mrcfile', '1.5.0'),
-    ('t-SNE-CUDA', '3.0.1', versionsuffix),
-    ('ESM-2', '2.0.0', versionsuffix),
+    ('makefun', '1.15.2'),
+    ('lru-dict', '1.2.0'),
     ('topaz', '0.2.5.20231120', versionsuffix),
-    ('dask', '2023.9.2'),
-    ('imageio', '2.33.1'),
-    ('napari', '0.4.19.post1'),
-    ('tensorboard', '2.15.1'),
-    ('PyHMMER', '0.10.6'),
+    ('IMOD', '4.12.62', versionsuffix),
+    ('relion-blush', '0.0.1.20231105.3148869', versionsuffix),
+    ('relion-classranker', '0.0.1.20230822.b6e751e', versionsuffix),
+    ('Model-Angelo', '1.0.12', versionsuffix),
+    ('DynaMight', '0.0.0.20240319.eef4aa6', versionsuffix),
+    ('mdocfile', '0.1.0'),
+    ('cryoCARE', '0.3.1', versionsuffix),
+    # ('napari-threedee', '0.0.19'),  # TODO
+
 ]
 
 # set this to the path to the Blush model weight database
 # workaround until we merged the "Dataset" easyblock:
 #   https://github.com/easybuilders/easybuild-easyblocks/pull/3246
 #   https://github.com/easybuilders/easybuild-framework/pull/4474
-_torch_home = ''
+# _torch_home = ''  # TH77: set by dependencies relion-classranker, Model-Angelo, and relion-blush
 
 _copts = [
+    '-DBUILD_SHARED_LIBS=ON ',
     '-DCMAKE_SHARED_LINKER="$LIBS"',
     '-DMPI_INCLUDE_PATH="$MPI_INC_DIR"',
     '-DCUDA_NVCC_FLAGS="--std=c++14"',
@@ -132,7 +194,7 @@ _copts = [
     '-DCUDA_TEXTURE=ON',
     '-DDoublePrec_CPU=OFF',
     '-DFETCH_WEIGHTS=OFF',
-    '-DTORCH_HOME="%s"' % _torch_home,
+    # '-DTORCH_HOME="%s"' % _torch_home,  #TH77 see above
 ]
 
 configopts = ' '.join(_copts)
@@ -149,86 +211,54 @@ exts_default_options = {
 }
 
 exts_list = [
-    # starfile 0.5.4 needs pandas>=2.1.1
-    ('pandas', '2.1.4', {
-        'checksums': ['fcb68203c833cc735321512e13861358079a96c174a61f5116a1de89c58c0ef7'],
+    ('lil_aretomo', '0.1.0', {
+        # 'patches': ['RELION-5.0.0_lil-aretomo_0.1.0_exe.patch'],  # Wait for confirmation from Euan
+        'checksums': [
+            {'lil_aretomo-0.1.0.tar.gz': '0749604bbf75f2d9013c6a40b5c024be2ed54dd1ccb1fd7c7663a0fd2f175e8f'},
+            # {'RELION-5.0.0_lil-aretomo_0.1.0_exe.patch':
+            #  '39a769f91e7f808ed94282904d8c47c5d391a4f6624a3cd6cb0fe44bc4cf717e'},
+        ],
     }),
-    ('starfile', '0.5.4', {
-        'checksums': ['4e7cea4f871f5aeeff6829b2cd95efc0c2212ca7a3a583f5fc8ff53329bc4417'],
+    ('yet_another_imod_wrapper', '0.1.1', {
+        'checksums': ['e6f3ab3f8dd4cf5c45b8f4cbeaee0d522e97fb62e22caee03b896dca2b1c7a9d'],
     }),
-    ('loguru', '0.7.2', {
-        'checksums': ['e671a53522515f34fd406340ee968cb9ecafbc4b36c679da03c18fd8d0bd51ac'],
-    }),
-    ('typer', '0.9.0', {
-        'checksums': ['50922fd79aea2f4751a8e0408ff10d2662bd0c8bbfa84755a699f3bada2978b2'],
-    }),
-    ('fastcluster', '1.2.6', {
-        'checksums': ['aab886efa7b6bba7ac124f4498153d053e5a08b822d2254926b7206cdf5a8aa6'],
-    }),
-    ('relion-classranker', '0.0.1_20230822', {
-        'sources': [{
-            'filename': '%(name)s-%(version)s.tar.gz',
-            'git_config': {
-                'url': 'https://github.com/3dem',
-                'repo_name': '%(name)s',
-                'commit': 'b6e751e5cb4205d8e9b36d0ae38c3687b3395acb',
-                'keep_git_dir': True,
-            },
-        }],
-        'checksums': [None],
-    }),
-    ('relion-blush', '0.0.1_20231105', {
-        'sources': [{
-            'filename': '%(name)s-%(version)s.tar.gz',
-            'git_config': {
-                'url': 'https://github.com/3dem',
-                'repo_name': '%(name)s',
-                'commit': '3148869de884fc01cff6c51a047b1413fc0b62cb',
-                'keep_git_dir': True,
-            },
-        }],
-        'checksums': [None],
-    }),
-    ('DynaMight', '0.0.1_20240319', {
-        'sources': [{
-            'filename': '%(name)s-%(version)s.tar.gz',
-            'git_config': {
-                'url': 'https://github.com/3dem',
-                'repo_name': '%(name)s',
-                'commit': 'eef4aa673af6cc908042b38646ae489ee8f2fde9',
-                'keep_git_dir': True,
-            },
-        }],
-        'checksums': [None],
-    }),
-    ('model-angelo', '1.0.12_20240226', {
-        'sources': [{
-            'filename': '%(name)s-%(version)s.tar.gz',
-            'git_config': {
-                'url': 'https://github.com/3dem',
-                'repo_name': '%(name)s',
-                'commit': '6fdad9b47a0a2abb86990803f243ef028197a04d',
-                'keep_git_dir': True,
-            },
-        }],
-        'checksums': [None],
-    }),
+]
+
+fix_python_shebang_for = [
+    'bin/yet-another-imod-wrapper'
 ]
 
 sanity_check_paths = {
     'files': ['bin/relion%s' % x for x in ['', '_autopick', '_batchrun', '_batchrun_mpi']],
-    'dirs': ['lib/python3.11/site-packages'],
+    'dirs': [
+        'lib/python3.11/site-packages',
+        # 'templates'
+    ],
 }
 
-sanity_check_commands = ['relion --help', 'relion --version']
+sanity_check_commands = [
+    'relion --help', 'relion --version',
+    # verify that RELION-5.0.0_gui_set_aretomo_exe.patch has been applies:
+    """relion_tomo_align_tilt_series AreTomo --help|grep '\\-\\-executable'"""
+]
 
-modextrapaths = {
-    'PYTHONPATH': 'lib/python3.11/site-packages',
-}
 
-modextravars = {
-    'TORCH_HOME': _torch_home,
-}
+_srcdirname = '%(builddir)s/relion'
+
+postinstallcmds = [
+    "sed -i 's/^dynamic = .*version.*/version = \"%s\"/g' %s/pyproject.toml"
+    % ('.'.join(version.split('.')[0:3]), _srcdirname),
+    "sed -i 's/^.tool.setuptools_scm./#&/g' %s/pyproject.toml" % _srcdirname,
+    "cd %s/ &&pip install . --no-deps --ignore-installed --prefix=%%(installdir)s" % _srcdirname,
+    # EMBL site specific 'mkdir -p %(installdir)s/templates',
+    # EMBL site specific 'cp %s/templates/* %%(installdir)s/templates' % _srcdirname,
+    # EMBL site specific 'sed -i "s|SED_MODULENAME|%(module_name)s|g" %(installdir)s/templates/*'
+]
+
+options = {'modulename': False}
+
+sanity_pip_check = True
+
 
 # modextravars doesn't expand environment variables, so use mod*footer instead
 # see https://github.com/easybuilders/easybuild-framework/issues/2548
