@@ -153,11 +153,20 @@ dependencies = [
     ('Ghostscript', '10.01.2'),   # for PDF files
     ('xpdf', '4.04'),             # pdf viewer
     # ('evince', '45.0'),         # pdf viewer
-    ('ctffind', '4.1.14'),      # lens defocus estimation
-    ('AreTomo2', '1.0.0', versionsuffix),     # alternative movie alignment
-    # ('MotionCor2', '1.5.0'),                  # alternative movie alignment
-    ('MotionCor3', '1.0.1', versionsuffix),   # alternative movie alignment
+    ('ctffind', '4.1.14'),        # lens defocus estimation
+    ('AreTomo2', '1.0.0', versionsuffix),       # alternative movie alignment
+    # ('MotionCor2', '1.6.4'),                  # alternative movie alignment
+    ('MotionCor3', '1.0.1', versionsuffix),     # alternative movie alignment
     # ('ResMap', '1.1.4'),        # alternative local resolution estimation
+    ('cryoCARE', '0.3.1', versionsuffix),
+    ('napari-threedee', '0.0.19'),
+    ('topaz', '0.2.5.20231120', versionsuffix),
+    ('IMOD', '4.12.62', versionsuffix),
+    ('relion-blush', '0.0.1.20231105.3148869', versionsuffix),
+    ('relion-classranker', '0.0.1.20230822.b6e751e', versionsuffix),
+    ('Model-Angelo', '1.0.12', versionsuffix),
+    ('DynaMight', '0.0.0.20240319.eef4aa6', versionsuffix),
+
 
     # dependencies from conda environment.yaml file #
     ('Python', '3.11.3'),
@@ -167,16 +176,7 @@ dependencies = [
     ('mrcfile', '1.5.0'),
     ('makefun', '1.15.2'),
     ('lru-dict', '1.2.0'),
-    ('topaz', '0.2.5.20231120', versionsuffix),
-    ('IMOD', '4.12.62', versionsuffix),
-    ('relion-blush', '0.0.1.20231105.3148869', versionsuffix),
-    ('relion-classranker', '0.0.1.20230822.b6e751e', versionsuffix),
-    ('Model-Angelo', '1.0.12', versionsuffix),
-    ('DynaMight', '0.0.0.20240319.eef4aa6', versionsuffix),
     ('mdocfile', '0.1.0'),
-    ('cryoCARE', '0.3.1', versionsuffix),
-    # ('napari-threedee', '0.0.19'),  # TODO
-
 ]
 
 # set this to the path to the Blush model weight database
