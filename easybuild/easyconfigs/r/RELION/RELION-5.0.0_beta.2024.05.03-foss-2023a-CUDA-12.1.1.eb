@@ -176,7 +176,7 @@ dependencies = [
     ('mrcfile', '1.5.0'),
     ('makefun', '1.15.2'),
     ('lru-dict', '1.2.0'),
-    ('lil-aretomo', '0.1.0'),  # requires exec-patch
+    ('lil-aretomo', '0.1.1'),  # requires exec-patch
     ('mdocfile', '0.1.0'),
 ]
 
