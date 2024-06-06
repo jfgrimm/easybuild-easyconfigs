@@ -162,7 +162,7 @@ dependencies = [
     ('napari-threedee', '0.0.19'),
     ('topaz', '0.2.5.20231120', versionsuffix),
     ('IMOD', '4.12.62', versionsuffix),
-    ('relion-blush', '0.0.1.20231105.3148869', versionsuffix),
+    ('relion-blush', '0.0.1.20240529.7889199', versionsuffix),
     ('relion-classranker', '0.0.1.20230822.b6e751e', versionsuffix),
     ('Model-Angelo', '1.0.12', versionsuffix),
     ('DynaMight', '0.0.0.20240319.eef4aa6', versionsuffix),
