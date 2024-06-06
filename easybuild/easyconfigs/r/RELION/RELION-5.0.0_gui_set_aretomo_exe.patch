@@ -1,0 +1,113 @@
+# Thomas Hoffmann, EMBL Heidelberg, structures-it@embl.de, 2024/03
+# Add extra option to GUI Align tilt series -> Tab: AreTomo in order to allow setting 
+# AreTomo executable.
+# Introduce shell variable RELION_ARETOMO_EXECUTABLE to set default of above.
+# Add parameter --executable to align_tilt_series.
+# (Note: patching align_tiltseries_runner.cpp is not required. Relevant is align_tilt_series.py)
+diff -ru relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/align_tiltseries_runner.cpp relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/align_tiltseries_runner.cpp
+--- relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/align_tiltseries_runner.cpp	2024-02-01 15:44:19.000000000 +0100
++++ relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/align_tiltseries_runner.cpp	2024-02-29 19:02:09.393718451 +0100
+@@ -28,7 +28,7 @@
+ 	continue_old = parser.checkOption("--only_do_unfinished", "Only estimate CTFs for those tomograms for which there is not yet a logfile with Final values.");
+ 	do_at_most = textToInteger(parser.getOption("--do_at_most", "Only process up to this number of (unprocessed) tomograms.", "-1"));
+     fn_imodwrapper_exe = parser.getOption("--wrapper_executable", "Alister Burt's wrapper script to call IMOD/AreTomo (default is set through $RELION_IMOD_WRAPPER_EXECUTABLE)", "");
+-
++    fn_aretomo_exe = parser.getOption("--aretomo_exec", "Path to AreTomo executable.", "AreTomo");
+     int fid_section = parser.addSection("IMOD fiducial-based alignment options");
+     do_imod_fiducials = parser.checkOption("--imod_fiducials", "Use IMOD's fiducial-based alignment method");
+     fiducial_diam = textToFloat(parser.getOption("--fiducial_diameter", "Diameter of the fiducials (in nm)", "10"));
+@@ -214,7 +214,7 @@
+     }
+     else if (do_aretomo)
+     {
+-        command += " AreTomo";
++        command += fn_aretomo_exe; 
+         command += " --output-resolution " + floatToString(aretomo_resolution);
+         command += " --alignment-thickness " + floatToString(aretomo_thickness);
+     }
+diff -ru relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/align_tiltseries_runner.h relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/align_tiltseries_runner.h
+--- relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/align_tiltseries_runner.h	2024-02-01 15:44:19.000000000 +0100
++++ relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/align_tiltseries_runner.h	2024-02-29 19:02:09.393718451 +0100
+@@ -54,7 +54,7 @@
+ 
+     // CTFFIND and Gctf executables and shell
+     FileName fn_imodwrapper_exe;
+-
++    FileName fn_aretomo_exe;
+     // Use IMOD:fiducials
+     bool do_imod_fiducials;
+ 
+diff -ru relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/gui_jobwindow.cpp relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/gui_jobwindow.cpp
+--- relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/gui_jobwindow.cpp	2024-02-01 15:44:19.000000000 +0100
++++ relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/gui_jobwindow.cpp	2024-02-29 19:02:09.370717873 +0100
+@@ -2698,7 +2698,7 @@
+ 
+ //    place("aretomo_resolution", TOGGLE_DEACTIVATE);
+     place("aretomo_thickness", TOGGLE_DEACTIVATE);
+-    place("aretomo_tiltcorrect", TOGGLE_DEACTIVATE);
++    place("aretomo_tiltcorrect", TOGGLE_DEACTIVATE);place("fn_aretomo_exe", TOGGLE_DEACTIVATE);
+ 
+     place("gpu_ids");
+     group2->end();
+diff -ru relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/pipeline_jobs.cpp relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/pipeline_jobs.cpp
+--- relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/pipeline_jobs.cpp	2024-02-01 15:44:19.000000000 +0100
++++ relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/pipeline_jobs.cpp	2024-02-29 19:06:23.977126175 +0100
+@@ -6680,7 +6680,7 @@
+ 	joboptions["do_aretomo"] = JobOption("Use AreTomo?", false, "Set to Yes to perform tilt series alignment using UCSF's AreTomo.");
+ 	//    joboptions["aretomo_resolution"] = JobOption("Resolution for AreTomo alignment (in A): ", 10, 1, 50, 1, "The maximum resolution (in A) used for AreTomo alignment. The images will be Fourier cropped to have their Nyquist frequency at this value.");
+ 	joboptions["aretomo_thickness"] = JobOption("Expected sample thickness (in nm): ", 200, 10, 500, 10, "This controls the thickness of intermediate reconstructions used for projection matching in AreTomo. This value is padded internally.");
+-	joboptions["aretomo_tiltcorrect"] = JobOption("Correct Tilt Angle Offset?", false, "Specify Yes to correct the tilt angle offset in the tomogram (applies the AreTomo -TiltCor option). This is useful for correcting slanting in tomograms which can arise due to sample mounting or milling angle. This can be useful for in situ data.");
++	joboptions["aretomo_tiltcorrect"] = JobOption("Correct Tilt Angle Offset?", false, "Specify Yes to correct the tilt angle offset in the tomogram (applies the AreTomo -TiltCor option). This is useful for correcting slanting in tomograms which can arise due to sample mounting or milling angle. This can be useful for in situ data.");char * aretomoexec = getenv("RELION_ARETOMO_EXECUTABLE"); joboptions["fn_aretomo_exe"]= JobOption("AreTomo executable:", std::string(aretomoexec ? aretomoexec : "AreTomo"), "Executable for running AreTomo. Default set by RELION_ARETOMO_EXECUTABLE, AreTomo else.");
+ 	joboptions["gpu_ids"] = JobOption("Which GPUs to use for AreTomo:", std::string(""), "Provide a list of which GPUs (e.g. 0:1:2:3) to use in AreTomo. MPI-processes are separated by ':'. For example, to place one rank on device 0 and one rank on device 1, provide '0:1'.");
+ }
+ bool RelionJob::getCommandsTomoAlignTiltSeriesJob(std::string &outputname, std::vector<std::string> &commands,
+@@ -6720,7 +6720,7 @@
+ 	{
+ 		command += "AreTomo ";
+ 		command += " --sample-thickness-nanometers " + joboptions["aretomo_thickness"].getString();
+-
++		command += " --executable " + joboptions["fn_aretomo_exe"].getString();
+ 		if (joboptions["aretomo_tiltcorrect"].getBoolean())
+ 		{
+ 			command += " --do-tilt-angle-offset-correction ";
+diff -ru relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/tomography_python_programs/align_tilt_series/aretomo/align_tilt_series.py relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/tomography_python_programs/align_tilt_series/aretomo/align_tilt_series.py
+--- relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/tomography_python_programs/align_tilt_series/aretomo/align_tilt_series.py	2024-02-01 15:44:19.000000000 +0100
++++ relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/tomography_python_programs/align_tilt_series/aretomo/align_tilt_series.py	2024-02-29 19:02:09.248714808 +0100
+@@ -19,6 +19,7 @@
+         tilt_angle_offset_correction: bool,
+         gpu_ids: Optional[List[int]],
+         job_directory: Path,
++        executable: Optional[str] = 'AreTomo'        
+ ):
+     """Align a single tilt-series in AreTomo using RELION tilt-series metadata.
+ 
+@@ -55,7 +56,8 @@
+             correct_tilt_angle_offset=tilt_angle_offset_correction,
+             output_pixel_size=20,
+             gpu_ids=gpu_ids,
+-            skip_if_completed=True
++            skip_if_completed=True,
++            executable=executable   #requires patched lil-aretomo
+         )
+ 
+         console.log('Writing STAR file for aligned tilt-series')
+diff -ru relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/tomography_python_programs/align_tilt_series/aretomo/cli.py relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/tomography_python_programs/align_tilt_series/aretomo/cli.py
+--- relion-b75b38c043a9a32f1d11f017b9af2d858c105016/src/tomography_python_programs/align_tilt_series/aretomo/cli.py	2024-02-01 15:44:19.000000000 +0100
++++ relion-b75b38c043a9a32f1d11f017b9af2d858c105016_aretomo_exec/src/tomography_python_programs/align_tilt_series/aretomo/cli.py	2024-02-29 19:03:35.972895326 +0100
+@@ -22,6 +22,8 @@
+         do_tilt_angle_offset_correction: bool = typer.Option(False, help='enable/disable stage tilt offset correction (-TiltCor in AreTomo)'),
+         tomogram_name: Optional[str] = typer.Option(None, help="'rlnTomoName' for a specific tilt-series"),
+         gpu: Optional[List[int]] = typer.Option(None, help="zero-indexed GPU identifiers as integers"),
++        executable: Optional[str] = typer.Option('AreTomo', help="Path to AreTomo executable"),
++
+ ):
+     """Align one or multiple tilt-series in AreTomo."""
+     if not tilt_series_star_file.exists():
+@@ -40,6 +42,7 @@
+             tilt_angle_offset_correction=do_tilt_angle_offset_correction,
+             gpu_ids=gpu,
+             job_directory=output_directory,
++            executable=executable,
+         )
+     if tomogram_name is None:  # write out STAR file for set of tilt-series
+         console.log('Writing aligned_tilt_series.star')
