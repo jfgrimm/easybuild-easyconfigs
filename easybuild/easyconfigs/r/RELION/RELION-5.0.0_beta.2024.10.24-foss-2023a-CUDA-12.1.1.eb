@@ -2,8 +2,8 @@
 easyblock = 'CMakePythonPackage'
 
 name = 'RELION'
-version = '5.0.0_beta.2024.05.03'
-_sha = '6331fe600cca7683ecf7c1011ce676701faf1e97'
+version = '5.0.0_beta.2024.10.24'
+_sha = '33b2b096510d5b1d6c901d82b5ac9f8acded118e'
 _commit = '%s' % _sha[:7]
 versionsuffix = '-CUDA-%(cudaver)s'
 versionprefix = 'b'  # avoid beta to be default module. (could damage existing Relion4 projects)
