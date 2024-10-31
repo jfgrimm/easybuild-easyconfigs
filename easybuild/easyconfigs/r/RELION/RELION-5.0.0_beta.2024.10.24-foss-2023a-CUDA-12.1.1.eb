@@ -154,7 +154,7 @@ dependencies = [
     ('xpdf', '4.04'),             # pdf viewer
     # ('evince', '45.0'),         # pdf viewer
     ('ctffind', '4.1.14'),        # lens defocus estimation
-    ('AreTomo2', '1.0.0', versionsuffix),       # alternative movie alignment
+    ('AreTomo2', '1.1.2', versionsuffix),       # alternative movie alignment
     # ('MotionCor2', '1.6.4'),                  # alternative movie alignment
     ('MotionCor3', '1.0.1', versionsuffix),     # alternative movie alignment
     # ('ResMap', '1.1.4'),        # alternative local resolution estimation
