@@ -1,0 +1,30 @@
+Author: Jasper Grimm <jasper.grimm@york.ac.uk>
+Patch the interproscan.sh script to listen to INTERPROSCAN_DATA_DIR and INTERPROSCAN_{data}
+environment variables, and add corresponding defines to the java invocation
+diff -Nru interproscan-5.55-88.0.orig/interproscan.sh interproscan-5.55-88.0/interproscan.sh
+--- interproscan-5.55-88.0.orig/interproscan.sh	2022-03-04 10:46:25.000000000 +0000
++++ interproscan-5.55-88.0/interproscan.sh	2025-04-11 14:36:47.166329586 +0100
+@@ -43,9 +43,22 @@
+ 
+ python3 initial_setup.py
+ 
++EB_DEFINES=""
++if [[ ! -z "${INTERPROSCAN_DATA_DIR}" ]];
++then
++    EB_DEFINES="${EB_DEFINES} -Ddata.directory=\"${INTERPROSCAN_DATA_DIR}\""
++    for var in $(env | grep -P '^INTERPROSCAN_(?!DATA_DIR)[a-z0-9_]+');
++    do
++       var_name="${var#INTERPROSCAN_}"; var_name="${var_name%=*}"
++	var_val="${var#*=}"
++	EB_DEFINES="${EB_DEFINES} -D${var_name,,}.signature.libary.release=\"${var_val}\""
++    done
++fi
++
+ "$JAVA" \
+  -XX:ParallelGCThreads=8 \
+  -Xms2028M -Xmx9216M \
+- -jar  interproscan-5.jar $@ -u $USER_DIR
++ $(echo "${EB_DEFINES}") \
++ -jar interproscan-5.jar $@ -u $USER_DIR
+ 
+ #end
